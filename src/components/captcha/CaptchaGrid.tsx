@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import CaptchaImage from "./CaptchaImage";
 import { useToast } from "@/components/ui/use-toast";
@@ -13,37 +12,43 @@ const sampleImages = [
     id: "1",
     url: "https://images.unsplash.com/photo-1500375592092-40eb2168fd21",
     alt: "Ocean waves",
-    placeholderColor: "bg-blue-100"
+    placeholderColor: "bg-blue-100",
+    concepts: ["sérénité", "calme", "liberté"]
   },
   {
     id: "2",
     url: "https://images.unsplash.com/photo-1482881497185-d4a9ddbe4151",
     alt: "Desert sand",
-    placeholderColor: "bg-amber-100"
+    placeholderColor: "bg-amber-100",
+    concepts: ["solitude", "chaleur", "mystère"]
   },
   {
     id: "3",
     url: "https://images.unsplash.com/photo-1517022812141-23620dba5c23",
     alt: "Herd of sheep",
-    placeholderColor: "bg-green-100"
+    placeholderColor: "bg-green-100",
+    concepts: ["communauté", "sécurité", "innocence"]
   },
   {
     id: "4",
     url: "https://images.unsplash.com/photo-1469041797191-50ace28483c3",
     alt: "Camels on field",
-    placeholderColor: "bg-yellow-100"
+    placeholderColor: "bg-yellow-100",
+    concepts: ["endurance", "patience", "voyage"]
   },
   {
     id: "5",
     url: "https://images.unsplash.com/photo-1466442929976-97f336a657be",
     alt: "Mosque buildings",
-    placeholderColor: "bg-indigo-100"
+    placeholderColor: "bg-indigo-100",
+    concepts: ["spiritualité", "paix", "tradition"]
   },
   {
     id: "6",
     url: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05",
     alt: "Foggy mountain",
-    placeholderColor: "bg-gray-100"
+    placeholderColor: "bg-gray-100",
+    concepts: ["mystère", "contemplation", "solitude"]
   }
 ];
 
@@ -59,6 +64,9 @@ const CaptchaGrid: React.FC<CaptchaGridProps> = ({ onVerify, className }) => {
   const [mouseMovements, setMouseMovements] = useState<{x: number, y: number, time: number}[]>([]);
   const [concept, setConcept] = useState("");
   const { toast } = useToast();
+  
+  // Les images qui sont associées au concept sélectionné
+  const [correctImageIds, setCorrectImageIds] = useState<string[]>([]);
 
   // Track mouse movements
   useEffect(() => {
@@ -88,6 +96,21 @@ const CaptchaGrid: React.FC<CaptchaGridProps> = ({ onVerify, className }) => {
       // Select a random emotional concept for the challenge
       const randomConcept = emotionalConcepts[Math.floor(Math.random() * emotionalConcepts.length)];
       setConcept(randomConcept);
+      
+      // Determine which images are associated with the concept
+      const correctIds = sampleImages
+        .filter(img => img.concepts.includes(randomConcept.toLowerCase()))
+        .map(img => img.id);
+      
+      // Si aucune image ne correspond, on en sélectionne au moins une au hasard
+      if (correctIds.length === 0) {
+        const randomIndex = Math.floor(Math.random() * sampleImages.length);
+        correctIds.push(sampleImages[randomIndex].id);
+      }
+      
+      setCorrectImageIds(correctIds);
+      console.log("Concept choisi:", randomConcept);
+      console.log("Images correctes:", correctIds);
     }, 1500);
 
     return () => clearTimeout(timer);
@@ -123,10 +146,15 @@ const CaptchaGrid: React.FC<CaptchaGridProps> = ({ onVerify, className }) => {
     // - Response time (5-45s is typical for humans)
     // - Mouse movement patterns
     
-    // For this demo, we'll use a simple validation:
-    // - Time between 3s and 60s
-    // - At least one image selected
-    const isHuman = responseTime > 3 && responseTime < 60 && selectedImages.length > 0;
+    // Vérifications de base pour l'authentification humaine
+    const timeOk = responseTime > 2 && responseTime < 60; 
+    const mouseMoveCount = mouseMovements.length > 50; // Assez de mouvements de souris
+    
+    // Vérification avancée: au moins une des images sélectionnées doit être correcte
+    const hasCorrectSelection = selectedImages.some(id => correctImageIds.includes(id));
+    
+    // Si les images correctes sont connues et qu'aucune n'a été sélectionnée, c'est un échec
+    const isHuman = timeOk && mouseMoveCount && hasCorrectSelection;
     
     if (isHuman) {
       toast({
@@ -146,6 +174,10 @@ const CaptchaGrid: React.FC<CaptchaGridProps> = ({ onVerify, className }) => {
     console.log({
       responseTime,
       selectedImages,
+      correctImageIds,
+      timeOk,
+      mouseMoveCount,
+      hasCorrectSelection,
       mouseMovementsCount: mouseMovements.length,
       // In a real implementation, this data would be sent to the server for analysis
     });
